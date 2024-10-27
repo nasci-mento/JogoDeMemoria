@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo de Memória</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Link para o CSS -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            color: blanchedalmond;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: rgb(0, 0, 50);
+            font-style: italic;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            grid-gap: 10px;
+        }
+
+        .card {
+            width: 100px;
+            height: 100px;
+            background-color: rgb(0, 0, 50);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+            cursor: grab;
+            position: relative;
+        }
+
+        .card-inner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s ease; /* Suaviza a transição */
+            transform-style: preserve-3d;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, 
+        .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-back {
+            background-color: cornflowerblue;
+            transform: rotateY(180deg);
+            font-style: normal;
+        }
+
+        .card-front {
+            background-color: blue;
+        }
+
+        @keyframes scale {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .card.matched {
+            animation: scale 0.6s; /* Animação ao encontrar um par */
+        }
+    </style>
+</head>
+<body>
+    <h1>Jogo de Memória</h1>
+    <div class="board" id="game-board"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let attempts = 0;
+            const cardArray = generateRandomEmojis();
+            cardArray.sort(() => 0.5 - Math.random());
+
+            const gameBoard = document.querySelector('#game-board');
+            let cardsChosen = [];
+            let cardsChosenId = [];
+            let cardsWon = [];
+
+            function generateRandomEmojis() {
+                const emojiCategories = {
+                    frutas: ['🍎', '🍌', '🍇', '🍉', '🍊', '🍓', '🍒', '🍍'],
+                    animais: ['🐶', '🐱', '🐭', '🐰', '🐹', '🦊', '🐻', '🦁'],
+                    veiculos: ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🏍️'],
+                    natureza: ['🌳', '🌼', '🌲', '🌻', '🍂', '🌸', '🍃', '🍀'],
+                    simbolos: ['⭐', '❤️', '💖', '🎉', '🔔', '🔥', '🌈', '⚡'],
+                    clima: ['☀️', '☁️', '🌧️', '⛈️', '❄️', '🌪️', '🌊', '🌈'],
+                    comida: ['🍕', '🍔', '🍣', '🌭', '🍦', '🍩', '🍺', '🍰'],
+                    desportos: ['⚽', '🏀', '🏈', '🎾', '🏐', '⛷️', '🚴‍♂️', '🏋️']
+                };
+
+                const categories = Object.keys(emojiCategories);
+                const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+                const selectedEmojis = emojiCategories[randomCategory];
+
+                return selectedEmojis.flatMap(emoji => [
+                    { name: emoji, img: emoji },
+                    { name: emoji, img: emoji }
+                ]);
+            }
+
+            function createBoard() {
+                cardArray.forEach((item, index) => {
+                    const card = document.createElement('div');
+                    card.setAttribute('class', 'card');
+                    card.setAttribute('data-id', index);
+                    
+                    const cardInner = document.createElement('div');
+                    cardInner.classList.add('card-inner');
+                    
+                    const cardFront = document.createElement('div');
+                    cardFront.classList.add('card-front');
+                    
+                    const cardBack = document.createElement('div');
+                    cardBack.classList.add('card-back');
+                    cardBack.textContent = item.img;
+
+                    cardInner.appendChild(cardFront);
+                    cardInner.appendChild(cardBack);
+                    card.appendChild(cardInner);
+                    
+                    card.addEventListener('click', flipCard);
+                    gameBoard.appendChild(card);
+                });
+            }
+
+            function flipCard() {
+                const cardId = this.getAttribute('data-id');
+                if (cardsChosenId.length < 2 && !this.classList.contains('flipped')) {
+                    this.classList.add('flipped');
+                    cardsChosen.push(cardArray[cardId].name);
+                    cardsChosenId.push(cardId);
+                    attempts++;
+
+                    if (cardsChosen.length === 2) {
+                        setTimeout(checkForMatch, 500);
+                    }
+                }
+            }
+
+            function checkForMatch() {
+                const cards = document.querySelectorAll('.card');
+                const [choiceOneId, choiceTwoId] = cardsChosenId;
+
+                if (cardsChosen[0] === cardsChosen[1] && choiceOneId !== choiceTwoId) {
+                    cardsWon.push(cardsChosen);
+                    cards[choiceOneId].classList.add('matched');
+                    cards[choiceTwoId].classList.add('matched');
+                    cards[choiceOneId].removeEventListener('click', flipCard);
+                    cards[choiceTwoId].removeEventListener('click', flipCard);
+                } else {
+                    cards[choiceOneId].classList.remove('flipped');
+                    cards[choiceTwoId].classList.remove('flipped');
+                }
+
+                cardsChosen = [];
+                cardsChosenId = [];
+
+                // Verifica se todos os pares foram encontrados
+                if (cardsWon.length === cardArray.length / 2) {
+                    const resultMessage = `Parabéns! Encontraste todos os pares! Tentativas: ${attempts}.`;
+                    alert(resultMessage);
+                    setTimeout(() => {
+                        location.reload();
+                    }, 0);
+                }
+            }
+
+            createBoard();
+        });
+    </script>
+</body>
+</html>
